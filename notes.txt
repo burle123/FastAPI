@@ -1,0 +1,7 @@
+create virtual environment
+install - fastapi and uvicorn
+run cmd - uvicorn filename:app --reload
+swagger ui- http://127.0.0.1:8000/docs - to try and execute.
+POST API Testing should always done in swagger and not in browser.
+pydantic - Used for: Data validation, Request body schema, Type checking, Automatic error handling.
+nested pydantic model - One Pydantic model inside another model.
