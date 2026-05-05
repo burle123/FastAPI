@@ -1,0 +1,107 @@
+
+from sqlalchemy import create_engine,Column,Integer,String
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from fastapi import FastAPI,Depends, HTTPException
+
+app = FastAPI()
+
+DATABASE_URL = "sqlite:///./test.db"
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args = {"check_same_thread":False}
+)
+
+
+sessionLocal = sessionmaker(bind=engine)
+
+Base = declarative_base()
+
+class Todo(Base):
+    __tablename__ = 'todos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    completed = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+
+def get_db():
+    db = sessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.get("/")
+def home(db: Session = Depends(get_db)):
+    return{
+        "Message":"DB Connected Successfully!"
+    }
+
+#Create API to create a todo item in the database using SQLAlchemy and FastAPI
+@app.post("/todos/")
+def create_todo(title:str, db: Session = Depends(get_db)):
+    new_todo = Todo(title=title, completed="false")
+    db.add(new_todo)
+    db.commit()
+    db.refresh(new_todo)
+    return {
+        "Message":"Todo Created Successfully!",
+        "Data": new_todo
+        }
+
+# Read all data from the database
+
+@app.get("/todos/")
+def read_todos(db: Session = Depends(get_db)):
+    todos = db.query(Todo).all()
+    return {
+        "Message":"Todos Retrieved Successfully!",
+        "Data": todos
+    }
+
+# Read a specific todo item from the database using its ID
+
+@app.get("/todos/{todo_id}")
+def read_todo(todo_id: int, db: Session = Depends(get_db)):
+    todo = db.query(Todo).filter(Todo.id == todo_id).first()
+    if not todo:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    return {
+        "Message":"Todo Retrieved Successfully!",
+        "Data": todo
+    }           
+
+
+# Update a specific todo item in the database using its ID
+
+@app.put("/todos/{todo_id}")
+def update_todo(todo_id: int, title: str, completed: str, db: Session = Depends(get_db)):
+    todo = db.query(Todo).filter(Todo.id == todo_id).first()
+    if not todo:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    todo.title = title
+    todo.completed = completed
+    db.commit()
+    db.refresh(todo)
+    return {
+        "Message":"Todo Updated Successfully!",
+        "Data": todo
+    }
+   
+
+# Delete a specific todo item from the database using its ID
+
+@app.delete("/todos/{todo_id}")
+def delete_todo(todo_id: int, db: Session = Depends(get_db)):
+    todo = db.query(Todo).filter(Todo.id == todo_id).first()
+    if not todo:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    db.delete(todo)
+    db.commit()
+    return {
+        "Message":"Todo Deleted Successfully!"
+         
+    }
